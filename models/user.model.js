@@ -35,8 +35,13 @@ const userSchema = new Schema({
     bestResumeScore: {
         type: Number,
         default: 0
-    }
-
+    },
+    refreshtoken:{
+        type: String,
+    },
+    verificationToken:{
+        type: Number,
+    },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
@@ -50,11 +55,30 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-userSchema.methods.generateToken = function () {
-    return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-    });
-};
+userSchema.methods.generateaccesstoken=function(){
+    return jwt.sign(
+        {
+            _id:this._id,
+            email:this.email,
+            username:this.username
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn:process.env.ACCESS_TOKEN_EXPIRY
+        }
+    )
+}
+userSchema.methods.generaterefreshtoken=function(){
+    return jwt.sign(
+        {
+            _id:this._id
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn:process.env.REFRESH_TOKEN_EXPIRY
+        }
+    )
+}
 
 const User = mongoose.model('User', userSchema);
 export default User;
