@@ -24,13 +24,10 @@ const resumeSchema = new Schema({
     parsedText: {
         type: String,
     },
-
-    // Latest ATS score
-    atsScore: {
-        type: Schema.Types.ObjectId,
-        ref: 'ATSScore',
+    softDelete:{
+        type:Boolean,
+        default:false,
     }
-
 }, { timestamps: true });
 
 const Resume = mongoose.model('Resume', resumeSchema);

@@ -44,7 +44,7 @@ const atsScoreSchema = new Schema({
     totalATSScore: {
         type: Number,
         default: 0
-    },
+    }
 
 }, { timestamps: true });
 
