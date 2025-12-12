@@ -1,9 +1,11 @@
-import { asynchandler } from "../utils/asynchandler";
+import { asynchandler } from "../utils/asynchandler.js";
 import User from "../models/user.model.js";
 import { handleerror } from "../utils/apierror.js";
 import { handleresponse } from "../utils/apiresponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { sendVerificationEmail } from "../utils/sendVerificationemail.js";
+import bcrypt from "bcrypt"
 
 const generateAccessandRefreshtoken=async(userid)=>{
     try {
@@ -26,15 +28,16 @@ const registerUser=asynchandler(async(req,res)=>{
          $or:[{email},{username}]
     });
     if(userExists){
-        return next(new handleerror(400,"User already exists with this email"))
+        throw new handleerror(400,"User already exist with this credentials")
     }
     const verifyCode=Math.floor(100000+Math.random()*900000).toString();
-    const hashedPassword=await bcrypt.hash(password,10);
+    const oneHour = 60 * 60 * 1000; // milliseconds
     const user=await User.create({
         username,
         email,
-        password: hashedPassword,
-        verificationToken:verifyCode
+        password,
+        verificationToken:verifyCode,
+        verificationTokenExpires:new Date(Date.now() + oneHour)
     });
     await user.save();
 
@@ -55,9 +58,43 @@ const registerUser=asynchandler(async(req,res)=>{
         }
         
     const createdUser=await User.findById(user._id).select("-password -refreshtoken -verificationToken");
-    return res.status(200).json(handleresponse(createdUser,201,true,"User registered successfully",createdUser));
+    return res.status(200).json(new handleresponse(createdUser,201,true,"User registered successfully",createdUser));
 
 });
+
+const verifytoken=asynchandler(async(req,res)=>{
+try {
+        const { username, verificationToken } = req.body; // rename for clarity
+        if (!verificationToken || !username) {
+            throw new handleerror(400, "Verification token or username is required");
+        }
+    
+        const user=await User.findOne(
+            {username:username,
+            verificationTokenExpires: {$gt: new Date()}
+        })
+    
+        if (!user) {
+            throw new handleerror(404, "User not found");
+        }
+    
+        // Ensure types match (string vs number)
+        if (String(verificationToken) !== String(user.verificationToken)) {
+            throw new handleerror(400, "Invalid verification token");
+        }
+    
+        // Update verification status
+        user.isVerified = true; // make sure your schema has this field
+        user.verificationToken = undefined; // optional: clear token after verification
+        user.verificationTokenExpires=undefined
+        await user.save();
+    
+        return res.status(200).json(new handleresponse(200,"user verified successfully"))
+} catch (error) {
+    console.log(error)
+    throw new handleerror(500,"User cannot be verified")   
+}
+})
 
 const loginUser=asynchandler(async(req,res)=>{
     const {email,username,password}=req.body;
@@ -68,9 +105,14 @@ const loginUser=asynchandler(async(req,res)=>{
     const user=await User.findOne({
         $or:[{username},{email}]
     })
+
     if(!user)
     {
         throw new handleerror(404,"User does not exist");
+    }
+    if(user.isVerified === false)
+    {
+        throw new handleerror(400,"User not Verified")
     }
     const ispasswordcorrect=await user.matchPassword(password);
     if(!ispasswordcorrect)
@@ -79,7 +121,7 @@ const loginUser=asynchandler(async(req,res)=>{
     }
 
     const{accesstoken,refreshtoken}= await generateAccessandRefreshtoken(user._id);
-    const loggedinuser=await User.findOne(user._id).select(
+    const loggedinuser=await User.findById(user._id).select(
         "-password -refreshtoken -verificationToken")
     const options={
         httpOnly:true,
@@ -205,5 +247,6 @@ export {
     logoutuser,
     changepassword,
     getcurrentuser,
-    refreshAccessToken
+    refreshAccessToken,
+    verifytoken
 }

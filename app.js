@@ -5,13 +5,17 @@ import cookieParser from 'cookie-parser';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.use(cors());
+
+app.use(cors({
+    origin:process.env.CORS_ORIGIN,
+    credentials:true
+}));
+
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }))
 app.use(express.json({ limit: "16kb" }))
 app.use(express.static("public"))
 app.use(cookieParser())
-
 
 // Sample route
 app.get('/', (req, res) => {
@@ -19,7 +23,12 @@ app.get('/', (req, res) => {
 });
 
 //import routes here
-
+import userrouter from "./routes/user.route.js"
+import resumerouter from "./routes/resume.route.js"
+import atsrouter from "./routes/ats.route.js"
 // Declare routes here
+app.use("/api/v1/users", userrouter)
+app.use("/api/v1/resume",resumerouter)
+app.use("/api/v1/ats",atsrouter)
 
 export {app}

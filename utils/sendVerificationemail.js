@@ -15,9 +15,9 @@ export const sendVerificationEmail = async ( email,username,verifycode) => {
     });
 
     const mailOptions = {
-      from: `Mystry Message <${process.env.EMAIL_USER}>`,
+      from: `Resume Ranker <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Mystry Message || Verification Code",
+      subject: "Resume Ranker || Verification Code",
       html: `
       <section style="font-family: Arial, sans-serif; color: #333;">
         <h2>Hello ${username},</h2>

@@ -1,8 +1,12 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-
+import { fileURLToPath } from 'url';
 // Load your LaTeX template from file
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const latexTemplate = fs.readFileSync(
   path.join(__dirname, "../templates/resume-template.tex"),
   "utf-8"
