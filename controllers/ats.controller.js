@@ -12,6 +12,7 @@ const createATSScore=asynchandler(async(req,res)=>{
     try {
         const {resumeId,jobDescription,jobTitle}=req.body;
         const userId=req.user._id;
+        console.log("Creating ATS Score for user:", userId, "resumeId:", resumeId);
         if(!userId){
             throw new handleerror(400,"User not found");
         }
@@ -19,6 +20,7 @@ const createATSScore=asynchandler(async(req,res)=>{
             throw new handleerror(400,"Resume ID is required");
         }
         const resume=await Resume.findOne({_id:resumeId,user:userId,softDelete:false});
+        console.log("Resume fetched for ATS Score:", resume);
         if(!resume){
             throw new handleerror(404,"Resume not found");
         }
@@ -85,11 +87,15 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
     // 1️⃣ Generate LaTeX code from helper
     const latexCode = await generateTailoredResume(resume.parsedText, jobDescription, dataforresume);
     console.log("Generated LaTeX code length:", latexCode);
-    if(!latexCode || latexCode.length === 0){
+    const updatedLatexCode = latexCode
+        .replace(/^```(?:latex)?\s*/, "") // removes ``` or ```latex from the start
+        .replace(/\s*```$/, "");           // removes ``` from the end
+    if(!updatedLatexCode || updatedLatexCode.length === 0){
         throw new handleerror(500, "Failed to generate tailored LaTeX resume");
     }
+    console.log("Updated LaTeX code length:", updatedLatexCode);
     // 2️⃣ Convert LaTeX to PDF
-    const pdfBuffer = await generatePDFfromLatex(latexCode); // use node-latex
+    const pdfBuffer = await generatePDFfromLatex(updatedLatexCode); // use node-latex
     if(!pdfBuffer || pdfBuffer.length === 0){
         throw new handleerror(500, "Failed to generate PDF from LaTeX");
     }
