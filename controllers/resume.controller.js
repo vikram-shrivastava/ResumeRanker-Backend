@@ -15,8 +15,8 @@ const saveResume = asynchandler(async (req, res) => {
         const { resumelink, originalFilename } = req.body;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(400, "User not found");
-        if (!resumelink) throw new handleerror(400, "resumelink is required");
+        if (!userId) throw new handleerror(403, "Access blocked");
+        if (!resumelink) throw new handleerror(404, "resumelink is required");
 
         const parser= new PDFParse({url:resumelink});
         const response = await parser.getText();
@@ -49,7 +49,7 @@ const getResume = asynchandler(async (req, res) => {
         const { resumeid } = req.params;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(400, "User not found");
+        if (!userId) throw new handleerror(403, "Access blocked");
         if (!resumeid) throw new handleerror(400, "Resume ID is required");
 
         const resume = await Resume.findOne({ _id: resumeid, user: userId, softDelete: false });
@@ -72,13 +72,14 @@ const getResume = asynchandler(async (req, res) => {
 const getAllUsersResumes = asynchandler(async (req, res) => {
     try {
         const userId = req.user._id;
-        if (!userId) throw new handleerror(400, "User not found");
+        if (!userId) {
+            throw new handleerror(403,"Access blocked")
+        }
 
         const resumes = await Resume.find({ user: userId, softDelete: false }).sort({ createdAt: -1 });
-        if (!resumes || resumes.length === 0) throw new handleerror(404, "No resumes found for this user");
 
         return res.status(200).json(
-            new handleresponse(resumes, 200, true, "Resumes fetched successfully", resumes)
+            new handleresponse( 200, resumes || [], "Resumes fetched successfully")
         );
 
     } catch (error) {
@@ -93,8 +94,8 @@ const deleteResume = asynchandler(async (req, res) => {
         const { resumeid } = req.params;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(400, "User not found");
-        if (!resumeid) throw new handleerror(400, "Resume ID is required");
+        if (!userId) throw new handleerror(403, "Access Blocked");
+        if (!resumeid) throw new handleerror(404, "Resume ID is required");
 
         const resume = await Resume.findOneAndUpdate(
             { _id: resumeid, user: userId },

@@ -7,6 +7,13 @@ import mongoose from "mongoose";
 import { sendVerificationEmail } from "../utils/sendVerificationemail.js";
 import bcrypt from "bcrypt"
 
+
+const options={
+    httpOnly:true,
+    secure:false,
+    sameSite: "lax",
+
+}
 const generateAccessandRefreshtoken=async(userid)=>{
     try {
         const user=await User.findById(userid);
@@ -17,70 +24,79 @@ const generateAccessandRefreshtoken=async(userid)=>{
 
         return {accesstoken,refreshtoken};
     } catch (error) {
-        throw new handleerror("Something went wrong while generating access and refresh token")
+        console.log("Error occured in generating tokens")
+        throw new handleerror(500,"Something went wrong while generating access and refresh token")
     }
 } 
 
 const registerUser=asynchandler(async(req,res)=>{
+    console.log("Register User called");
     const {username,email,password}=req.body;
 
     const userExists=await User.findOne({
          $or:[{email},{username}]
     });
     if(userExists){
-        throw new handleerror(400,"User already exist with this credentials")
+        console.log("user already exist")
+        throw new handleerror(400,"User already exist")
     }
     const verifyCode=Math.floor(100000+Math.random()*900000).toString();
-    const oneHour = 60 * 60 * 1000; // milliseconds
+    const oneHour = 60 * 60 * 1000; 
+
     const user=await User.create({
         username,
         email,
         password,
         verificationToken:verifyCode,
-        verificationTokenExpires:new Date(Date.now() + oneHour)
+        verificationTokenExpires:new Date(Date.now() + oneHour),
     });
     await user.save();
+    const{accesstoken,refreshtoken}= await generateAccessandRefreshtoken(user._id);
+    const userToUpdate=await User.findById(user._id);
+    userToUpdate.refreshtoken=refreshtoken;
+    await userToUpdate.save();
 
-    //send verification email here
     const emailResponse=sendVerificationEmail(email,username,verifyCode)
-    if(!(await emailResponse).success){
-        return res.json(
-                new handleresponse({
-                    success:false,
-                    message:(await emailResponse).message,
-
-                },
-                {
-                    status:400
-                }
-            )
-        )
-        }
+    if(!(await emailResponse).success)
+    {
+        console.log("Email verification failed")
+        throw new handleerror(503,"Email verification failed")
+    }
         
     const createdUser=await User.findById(user._id).select("-password -refreshtoken -verificationToken");
-    return res.status(200).json(new handleresponse(createdUser,201,true,"User registered successfully",createdUser));
-
+    return res
+        .status(200)
+        .cookie("accesstoken",accesstoken,options)
+        .cookie("refreshtoken",refreshtoken,options)
+        .json(new handleresponse(200,{createdUser,accesstoken},"User Registered Successfully"));
 });
 
 const verifytoken=asynchandler(async(req,res)=>{
 try {
-        const { username, verificationToken } = req.body; // rename for clarity
-        if (!verificationToken || !username) {
-            throw new handleerror(400, "Verification token or username is required");
+        const {verificationToken,username } = req.body;
+        if (!verificationToken) {
+            console.log("Verification token not found")
+            throw new handleerror(404,"Verification token not found")
         }
-    
+        if(!username){
+            throw new handleerror(404,"username not found!")
+        }
+        console.log("username in backend:",username)
         const user=await User.findOne(
             {username:username,
             verificationTokenExpires: {$gt: new Date()}
         })
     
         if (!user) {
-            throw new handleerror(404, "User not found");
+            console.log("Cannot find user")
+            throw new handleerror(404,"User not found")
         }
     
         // Ensure types match (string vs number)
         if (String(verificationToken) !== String(user.verificationToken)) {
-            throw new handleerror(400, "Invalid verification token");
+            console.log("Failed in verification")
+            console.log(verificationToken," ",user.verificationToken)
+            throw new handleerror(400,"Token verification failed")
         }
     
         // Update verification status
@@ -89,57 +105,50 @@ try {
         user.verificationTokenExpires=undefined
         await user.save();
     
-        return res.status(200).json(new handleresponse(200,"user verified successfully"))
+        return res.status(200).json(new handleresponse(200,user.isVerified,"user verified successfully"))
 } catch (error) {
     console.log(error)
-    throw new handleerror(500,"User cannot be verified")   
+    return res.status(500).json(new handleerror(500,{message:"User cannot be verified"}));   
 }
 })
 
 const loginUser=asynchandler(async(req,res)=>{
-    const {email,username,password}=req.body;
-     if( !(email || username))
-    {
-        throw new handleerror(400,"username or email is required");
-    }
-    const user=await User.findOne({
-        $or:[{username},{email}]
-    })
-
-    if(!user)
-    {
-        throw new handleerror(404,"User does not exist");
-    }
-    if(user.isVerified === false)
-    {
-        throw new handleerror(400,"User not Verified")
-    }
-    const ispasswordcorrect=await user.matchPassword(password);
-    if(!ispasswordcorrect)
-    {
-        throw new handleerror(401,"Password invalid");
-    }
-
-    const{accesstoken,refreshtoken}= await generateAccessandRefreshtoken(user._id);
-    const loggedinuser=await User.findById(user._id).select(
+   try {
+     const {email,username,password}=req.body;
+      if( !(email || username))
+     {
+        throw new handleerror(404,"Email and Password are required")
+     }
+     const user=await User.findOne({
+         $or:[{username},{email}]
+     })
+ 
+     if(!user)
+     {
+        throw new handleerror(404,"User not found")
+     }
+     if(user.isVerified === false)
+     {
+        throw new handleerror(401,"user is not verified")
+     }
+     const ispasswordcorrect=await user.matchPassword(password);
+     if(!ispasswordcorrect)
+     {
+        throw new handleerror(401,"Invalid Password")
+     }
+ 
+     const{accesstoken,refreshtoken}= await generateAccessandRefreshtoken(user._id);
+     const createdUser=await User.findById(user._id).select(
         "-password -refreshtoken -verificationToken")
-    const options={
-        httpOnly:true,
-        secure:true
-    }
     return res
-    .status(200)
-    .cookie("accesstoken",accesstoken,options)
-    .cookie("refreshtoken",refreshtoken,options)
-    .json(
-        new handleresponse(
-            200,
-            {
-                user:loggedinuser,accesstoken,refreshtoken
-            },
-            "User Logged in Successfully"
-        )
-    )
+        .status(200)
+        .cookie("accesstoken",accesstoken,options)
+        .cookie("refreshtoken",refreshtoken,options)
+        .json(new handleresponse(200,{createdUser,accesstoken},"User Registered Successfully"));
+   } catch (error) {
+        console.log(error)
+        throw new handleerror(500,"User login failed")
+   }
 })
 
 const logoutuser=asynchandler(async(req,res)=>{
@@ -150,17 +159,11 @@ const logoutuser=asynchandler(async(req,res)=>{
     await User.findByIdAndUpdate(req.user._id,{
         $unset:{
             refreshtoken:1,
-
         }
     },
     {
         new:true
     })
-    const options={
-        httpOnly:true,
-        secure:true
-    }
-
     return res
     .status(200)
     .clearCookie("accesstoken",options)
@@ -174,7 +177,7 @@ const changepassword=asynchandler(async(req,res)=>{
     const ispasswordcorrect=await user.ispasswordcorrect(oldpassword)
     if(!ispasswordcorrect)
     {
-        throw new handleerror(400,"Invalid Password")   
+        throw new handleerror(401,"Invalid Password")   
     }
     user.password=newpassword
     await user.save({validateBeforeSave:false})
@@ -197,48 +200,29 @@ const getcurrentuser=asynchandler(async(req,res)=>{
 
 //refresh token controller
 const refreshAccessToken=asynchandler(async(req,res)=>{
-    const incomingrefreshtoken= req.cookies.refreshtoken || req.body.refreshtoken
-    
-    const ans= await req.cookies.refreshtoken;
-    console.log(ans);
-    if(!incomingrefreshtoken)
+    const refreshToken=req.cookies.refreshtoken;
+    if(!refreshToken)
     {
-        throw new handleerror(401,"Unauthorized request");
+        throw new handleerror(404,"Refresh token not found!")
     }
-
+    let decoded;
     try {
-        const verifyingtoken=jwt.verify(incomingrefreshtoken,process.env.REFRESH_TOKEN_SECRET)
-        const user=await User.findById(verifyingtoken?._id)
-        if(!user)
-        {
-            throw new handleerror(401,"Invalid refresh token");
-        }
-        if(incomingrefreshtoken!==user?.RefreshToken){
-            throw new handleerror(401,"Refresh Token Expired or used")
-        }
-        const options={
-            httpOnly:true,
-            secure:true
-        }
-        const {accesstoken,newrefreshtoken}=await generateAccessandRefreshtoken(user._id)
-        return res
-        .status(200)
-        .cookie("accesstoken",accesstoken,options)
-        .cookie("refreshtoken",newrefreshtoken,options)
-        .json(
-            new handleresponse(
-                200,
-                {accesstoken,refreshtoken:newrefreshtoken},
-                "Access Token Refreshed"
-                
-            )
-        )
-    } 
-    catch (error) {
-        throw new handleerror(401,error?.message ||"Invalid Refresh Token")
-        // console.log('invalid refresh token');
-        
+        decoded=jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET)
+    } catch (error) {
+        throw new handleerror(401,"Invalid refresh token")
     }
+    const {accesstoken,newrefreshtoken}= await generateAccessandRefreshtoken(user._id);
+    return res
+    .status(200)
+    .cookie("accesstoken",accesstoken,options)
+    .cookie("refreshtoken",newrefreshtoken,options)
+    .json(
+        new handleresponse(
+            200,
+            {token:accesstoken},
+            "Access token refreshed successfully"
+        )
+    )
 })
 
 export {

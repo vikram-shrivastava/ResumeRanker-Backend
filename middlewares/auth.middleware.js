@@ -4,7 +4,8 @@ import jwt from "jsonwebtoken"
 import User from "../models/user.model.js";
 export const verifyJWT=asynchandler(async(req,_,next)=>{
     try {
-        const token=req.cookies?.accesstoken || req.header("Authorization")?.replace("Bearer ","")
+        const token=req.cookies?.accesstoken|| req.header("Authorization")?.replace("Bearer ","")
+        console.log(req.cookies?.accesstoken)
         if(!token)
         {
             throw new handleerror(401,"UnAuthorized Error can not access");
@@ -19,6 +20,7 @@ export const verifyJWT=asynchandler(async(req,_,next)=>{
         req.user=user;
         next()
     } catch (error) {
-            throw new handleerror(401,"Already Logged out")
+        console.log("Error",error)
+        throw new handleerror(401,error,"Already Logged out")
     }
 })

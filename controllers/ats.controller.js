@@ -14,10 +14,10 @@ const createATSScore=asynchandler(async(req,res)=>{
         const userId=req.user._id;
         console.log("Creating ATS Score for user:", userId, "resumeId:", resumeId);
         if(!userId){
-            throw new handleerror(400,"User not found");
+            throw new handleerror(403,"Access Blocked");
         }
         if(!resumeId){
-            throw new handleerror(400,"Resume ID is required");
+            throw new handleerror(404,"Resume ID is required");
         }
         const resume=await Resume.findOne({_id:resumeId,user:userId,softDelete:false});
         console.log("Resume fetched for ATS Score:", resume);
@@ -40,7 +40,7 @@ const createATSScore=asynchandler(async(req,res)=>{
         });
         await atsScore.save();
         return res.status(201).json(
-            new handleresponse(atsScore,201,true,"ATS Score created successfully",atsScore)
+            new handleresponse(201,atsScore,"ATS Score created successfully")
         );
     } catch (error) {
         console.log(error);
@@ -53,10 +53,10 @@ const getATSScoreById=asynchandler(async(req,res)=>{
         const {resumeid}=req.params;
         const userId=req.user._id;
         if(!userId){
-            throw new handleerror(400,"User not found");
+            throw new handleerror(403,"Access blocked");
         }
         if(!resumeid){
-            throw new handleerror(400,"Resume ID is required");
+            throw new handleerror(404,"Resume ID is required");
         }
         const atsScore=await ATSScore.findOne({resume:resumeid,user:userId});
         if(!atsScore){
@@ -77,9 +77,9 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
     const { resumeId, jobDescription, dataforresume={} } = req.body;
     const userId = req.user._id;
 
-    if (!userId) throw new handleerror(400, "User not found");
-    if (!resumeId) throw new handleerror(400, "Resume ID is required");
-    if (!jobDescription) throw new handleerror(400, "Job Description is required");
+    if (!userId) throw new handleerror(403, "Access blocked");
+    if (!resumeId) throw new handleerror(404, "Resume ID is required");
+    if (!jobDescription) throw new handleerror(404, "Job Description is required");
 
     const resume = await Resume.findOne({ _id: resumeId, user: userId, softDelete: false });
     if (!resume) throw new handleerror(404, "Resume not found");
@@ -91,13 +91,13 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
         .replace(/^```(?:latex)?\s*/, "") // removes ``` or ```latex from the start
         .replace(/\s*```$/, "");           // removes ``` from the end
     if(!updatedLatexCode || updatedLatexCode.length === 0){
-        throw new handleerror(500, "Failed to generate tailored LaTeX resume");
+        throw new handleerror(503, "Failed to generate tailored LaTeX resume");
     }
     console.log("Updated LaTeX code length:", updatedLatexCode);
     // 2️⃣ Convert LaTeX to PDF
     const pdfBuffer = await generatePDFfromLatex(updatedLatexCode); // use node-latex
     if(!pdfBuffer || pdfBuffer.length === 0){
-        throw new handleerror(500, "Failed to generate PDF from LaTeX");
+        throw new handleerror(503, "Failed to generate PDF from LaTeX");
     }
     // 3️⃣ Send PDF to frontend
     res.setHeader("Content-Type", "application/pdf");
