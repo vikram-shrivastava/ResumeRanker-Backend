@@ -20,30 +20,31 @@ const atsScoreSchema = new Schema({
     jobTitle: {
         type: String,
     },
-
-    clarityScore: {
-        type: Number,
-        default: 0
+    atsMode:{
+        type:String,
+    },
+    roleDetected: {
+        type: String,
     },
 
-    numbersScore: {
-        type: Number,
-        default: 0
+    summary: {
+        type: String,
     },
 
-    requirementScore: {
-        type: Number,
-        default: 0
+    keywordsFound: {
+        type: [String],
     },
 
-    techKeywordScore: {
-        type: Number,
-        default: 0
+    keywordsMissing: {
+        type: [String],
     },
 
     totalATSScore: {
         type: Number,
         default: 0
+    },
+    improvements:{
+        type:[String],
     }
 
 }, { timestamps: true });

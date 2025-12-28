@@ -27,6 +27,14 @@ const resumeSchema = new Schema({
     softDelete:{
         type:Boolean,
         default:false,
+    },
+    atsScore:{
+        type:Number,
+        default :0
+    },
+    tailored:{
+        type:Boolean,
+        default:false
     }
 }, { timestamps: true });
 

@@ -1,121 +1,171 @@
-
 const getDynamicKeywords = (text) => {
-    const stopwords = new Set([
-        "the", "and", "with", "from", "that", "this", "your", "you",
-        "for", "are", "have", "will", "shall", "their", "they",
-        "role", "responsibilities", "about", "work", "able"
-    ]);
+  const stopwords = new Set([
+    "the", "and", "with", "from", "that", "this", "your", "you",
+    "for", "are", "have", "will", "shall", "their", "they",
+    "role", "responsibilities", "about", "work", "able"
+  ]);
 
-    return text
-        .replace(/[^a-zA-Z0-9 ]/g, " ")
-        .split(/\s+/)
-        .map(w => w.toLowerCase())
-        .filter(w =>
-            w.length > 3 &&                   // long enough
-            !stopwords.has(w) &&              // not a stopword
-            !/^\d+$/.test(w)                 // not numbers
-        );
+  return text
+    .replace(/[^a-zA-Z0-9 ]/g, " ")
+    .split(/\s+/)
+    .map(w => w.toLowerCase())
+    .filter(w =>
+      w.length > 3 &&
+      !stopwords.has(w) &&
+      !/^\d+$/.test(w)
+    );
 };
 
 
-const getATSScore = (resumeText, jobDescription) => {
+/* =====================================================
+   MAIN ATS ANALYSIS FUNCTION
+===================================================== */
 
-    resumeText = resumeText.toLowerCase();
-    jobDescription = jobDescription.toLowerCase();
+const analyzeResumeATS = (resumeText, jobDescription) => {
 
-    // ---------------------------
-    // 1. CLARITY SCORE (Updated)
-    // ---------------------------
-    const importantSections = [
-        "experience",
-        "education",
-        "projects",
-        "skills",
-        "certifications",
-        "summary",
-        "achievements"
-    ];
+  resumeText = resumeText.toLowerCase();
+  jobDescription = jobDescription.toLowerCase();
 
-    // Count number of sections present
-    let sectionCount = importantSections.filter(sec =>
-        resumeText.includes(sec)
-    ).length;
+  /* --------------------------------------------------
+     1. CLARITY SCORE
+  -------------------------------------------------- */
+  const importantSections = [
+    "experience",
+    "education",
+    "projects",
+    "skills",
+    "certifications",
+    "summary",
+    "achievements"
+  ];
 
-    // NEW: Section score is proportional
-    // If 5/7 sections → ~20
-    // If 7/7 sections → ~22 (never 23)
-    let sectionScore = (sectionCount / importantSections.length) * 15;
+  const sectionCount = importantSections.filter(sec =>
+    resumeText.includes(sec)
+  ).length;
 
-    // Bullet points add up to 8 max
-    const bulletCount = (resumeText.match(/[-•*]/g) || []).length;
-    let bulletScore = Math.min(8, bulletCount);
+  const sectionScore = (sectionCount / importantSections.length) * 15;
 
-    // Final clarity score, max 23
-    let clarityScore = Math.min(23, sectionScore + bulletScore);
+  const bulletCount = (resumeText.match(/[-•*]/g) || []).length;
+  const bulletScore = Math.min(8, bulletCount);
 
-    // round
-    clarityScore = Math.round(clarityScore);
+  const clarityScore = Math.min(23, sectionScore + bulletScore);
 
 
-
-    // ---------------------------
-    // 2. NUMBERS SCORE
-    // ---------------------------
-    const numberMatches = resumeText.match(/\b\d+(\.\d+)?%?|\d+x\b/g) || [];
-
-    let numbersScore = Math.min(25, numberMatches.length * 3); // max 25
+  /* --------------------------------------------------
+     2. NUMBERS / IMPACT SCORE
+  -------------------------------------------------- */
+  const numberMatches = resumeText.match(/\b\d+(\.\d+)?%?|\d+x\b/g) || [];
+  const numbersScore = Math.min(25, numberMatches.length * 3);
 
 
+  /* --------------------------------------------------
+     3. REQUIREMENT MATCH SCORE
+  -------------------------------------------------- */
+  const jdWords = jobDescription
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .filter(w => w.length > 4);
 
-    // ---------------------------
-    // 3. REQUIREMENT SCORE
-    // ---------------------------
+  const matchedJDWords = jdWords.filter(word =>
+    resumeText.includes(word)
+  );
 
-    // extract words from JD
-    const jdWords = jobDescription
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .split(/\s+/)
-        .filter(w => w.length > 4); // remove stopwords like "and", "with"
-
-    let matchedJDWords = jdWords.filter(word =>
-        resumeText.includes(word)
-    );
-
-    let requirementScore = Math.min(
-        25,
-        (matchedJDWords.length / jdWords.length) * 25
-    );
+  const requirementScore = jdWords.length === 0
+    ? 0
+    : Math.min(25, (matchedJDWords.length / jdWords.length) * 25);
 
 
+  /* --------------------------------------------------
+     4. TECH / SKILL KEYWORD SCORE
+  -------------------------------------------------- */
+  const jdKeywords = getDynamicKeywords(jobDescription);
+  const resumeKeywords = getDynamicKeywords(resumeText);
 
-    // ---------------------------
-    // 4. TECH / SKILL KEYWORD SCORE (dynamic, works for ALL roles)
-    // ---------------------------
-    const jdKeywords = getDynamicKeywords(jobDescription);
-    const resumeKeywords = getDynamicKeywords(resumeText);
+  const keywordOverlap = jdKeywords.filter(word =>
+    resumeKeywords.includes(word)
+  );
 
-    // find overlap
-    const keywordOverlap = jdKeywords.filter(word =>
-        resumeKeywords.includes(word)
-    );
-
-    // score proportional to overlap
-    const techKeywordScore = Math.min(
-        25,
-        (keywordOverlap.length / jdKeywords.length) * 25
-    );
+  const techKeywordScore = jdKeywords.length === 0
+    ? 0
+    : Math.min(25, (keywordOverlap.length / jdKeywords.length) * 25);
 
 
-    // ---------------------------
-    // Final Response
-    // ---------------------------
+  /* --------------------------------------------------
+     FINAL ATS SCORE (0–100)
+  -------------------------------------------------- */
+  const totalATSScore = Math.round(
+    clarityScore +
+    numbersScore +
+    requirementScore +
+    techKeywordScore
+  );
 
-    return {
-        clarityScore: Math.round(clarityScore),
-        numbersScore: Math.round(numbersScore),
-        requirementScore: Math.round(requirementScore),
-        techKeywordScore: Math.round(techKeywordScore)
-    };
+
+  /* --------------------------------------------------
+     ROLE DETECTION (Lightweight, heuristic-based)
+  -------------------------------------------------- */
+  const roleDetected = (() => {
+    if (resumeText.includes("react") || resumeText.includes("frontend"))
+      return "Frontend Developer";
+    if (resumeText.includes("node") || resumeText.includes("backend"))
+      return "Backend Developer";
+    if (resumeText.includes("machine learning") || resumeText.includes("data"))
+      return "Data / ML Engineer";
+    return "Software Engineer";
+  })();
+
+
+  /* --------------------------------------------------
+     SUMMARY (Human-like, non-AI sounding)
+  -------------------------------------------------- */
+  const summary = `Your resume shows a ${totalATSScore >= 70 ? "strong" : "moderate"} alignment with the job requirements. Key technical skills are ${
+    keywordOverlap.length > 0 ? "partially" : "poorly"
+  } matched, and the resume ${
+    numbersScore > 10 ? "effectively demonstrates impact using metrics." : "would benefit from adding measurable achievements."
+  }`;
+
+
+  /* --------------------------------------------------
+     KEYWORDS FOUND / MISSING
+  -------------------------------------------------- */
+  const keywordsFound = [...new Set(keywordOverlap)].slice(0, 15);
+  const keywordsMissing = jdKeywords
+    .filter(k => !resumeKeywords.includes(k))
+    .slice(0, 15);
+
+
+  /* --------------------------------------------------
+     IMPROVEMENT SUGGESTIONS
+  -------------------------------------------------- */
+  const improvements = [];
+
+  if (clarityScore < 15)
+    improvements.push("Add clear section headings like Experience, Skills, and Projects.");
+
+  if (numbersScore < 10)
+    improvements.push("Include measurable results (percentages, numbers, impact).");
+
+  if (keywordsMissing.length > 5)
+    improvements.push("Incorporate missing job-specific keywords naturally into your resume.");
+
+  if (sectionCount < 5)
+    improvements.push("Add missing core sections to improve ATS readability.");
+
+  if (improvements.length === 0)
+    improvements.push("Your resume is ATS-friendly. Minor refinements can further boost relevance.");
+
+
+  /* --------------------------------------------------
+     FINAL RESPONSE (Frontend Contract)
+  -------------------------------------------------- */
+  return {
+    totalATSScore,
+    roleDetected,
+    summary,
+    keywordsFound,
+    keywordsMissing,
+    improvements
+  };
 };
 
-export default getATSScore;
+export default analyzeResumeATS;

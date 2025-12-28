@@ -17,24 +17,12 @@ const userSchema = new Schema({
         type: String,
         required: true,
     },
-
-    // All resumes user uploaded
     resumes: [
         {
             type: Schema.Types.ObjectId,
             ref: 'Resume'
         }
     ],
-
-    // Keep only the score, not ref
-    bestResume: {
-        type: Schema.Types.ObjectId,
-        ref: 'Resume'
-    },
-    bestResumeScore: {
-        type: Number,
-        default: 0
-    },
     refreshtoken:{
         type: String,
     },

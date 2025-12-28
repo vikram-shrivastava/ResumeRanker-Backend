@@ -10,7 +10,7 @@ import {generatePDFfromLatex} from "../utils/generatePDF.js";
 //createATSScore: create ATS score for a resume and job description
 const createATSScore=asynchandler(async(req,res)=>{
     try {
-        const {resumeId,jobDescription,jobTitle}=req.body;
+        const {resumeId,jobDescription,jobRole,atsMode}=req.body;
         const userId=req.user._id;
         console.log("Creating ATS Score for user:", userId, "resumeId:", resumeId);
         if(!userId){
@@ -19,26 +19,38 @@ const createATSScore=asynchandler(async(req,res)=>{
         if(!resumeId){
             throw new handleerror(404,"Resume ID is required");
         }
+        if(!atsMode){
+            throw new handleerror(404, "ATS Mode is required")
+        }
+        if(atsMode=='jd' && !jobDescription){
+            throw new handleerror(404,"Job Description is required for current ATS mode")
+        }
+        else if(atsMode=='role'&& !jobRole){
+            throw new handleerror(404,"Job Role is required for current ATS mode")
+        }
         const resume=await Resume.findOne({_id:resumeId,user:userId,softDelete:false});
         console.log("Resume fetched for ATS Score:", resume);
         if(!resume){
             throw new handleerror(404,"Resume not found");
         }
         //ATS score calculation logic
-        const {clarityScore,numbersScore,requirementScore,techKeywordScore}=getATSScore(resume.parsedText,jobDescription);
-        const totalATSScore=Math.floor((clarityScore+numbersScore+requirementScore+techKeywordScore)/4);
+        const { totalATSScore,roleDetected,summary,keywordsFound,keywordsMissing, improvements}=getATSScore(resume.parsedText,jobDescription || jobRole);
         const atsScore=new ATSScore({
             user:userId,
             resume:resumeId,
             jobDescription,
-            jobTitle,
-            clarityScore,
-            numbersScore,
-            requirementScore,
-            techKeywordScore,
+            jobRole,
+            atsMode,
+            roleDetected,
+            summary,
+            keywordsFound,
+            keywordsMissing,
+            improvements,
             totalATSScore
         });
         await atsScore.save();
+        resume.atsScore=totalATSScore;
+        await resume.save();
         return res.status(201).json(
             new handleresponse(201,atsScore,"ATS Score created successfully")
         );
@@ -99,6 +111,9 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
     if(!pdfBuffer || pdfBuffer.length === 0){
         throw new handleerror(503, "Failed to generate PDF from LaTeX");
     }
+
+    resume.tailored=resume.tailored+1;
+    await resume.save();
     // 3️⃣ Send PDF to frontend
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=tailored_resume.pdf`);
@@ -112,4 +127,18 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
   }
 });
 
-export { createATSScore, getATSScoreById, tailorResumeForJob };
+
+const getAllUserATSScore=asynchandler(async(req,res)=>{
+    try {
+        const userId=req.user._id;
+        if(!userId){
+            throw new handleerror(403,"Access blocked")
+        }
+        const atsData=await ATSScore.find({user:userId}).sort({createdAt:-1})
+        return res.status(200).json(new handleresponse(200,atsData,"Ats Data Fetched Successfully"))
+    } catch (error) {
+        console.log(error)
+        throw new handleerror(500,"Internal Server Error")
+    }
+})
+export { createATSScore, getATSScoreById, tailorResumeForJob,getAllUserATSScore };

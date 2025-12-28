@@ -20,6 +20,7 @@ const saveResume = asynchandler(async (req, res) => {
 
         const parser= new PDFParse({url:resumelink});
         const response = await parser.getText();
+
         console.log("Parsed text length:", response.text);
         // Save resume to DB
         const resume = new Resume({
@@ -34,7 +35,7 @@ const saveResume = asynchandler(async (req, res) => {
         await resume.save();
 
         return res.status(201).json(
-            new handleresponse(resume, 201, true, "Resume saved successfully", resume)
+            new handleresponse( 201, resume, "Resume saved successfully")
         );
 
     } catch (error) {
@@ -77,7 +78,7 @@ const getAllUsersResumes = asynchandler(async (req, res) => {
         }
 
         const resumes = await Resume.find({ user: userId, softDelete: false }).sort({ createdAt: -1 });
-
+        console.log("Resume",resumes)
         return res.status(200).json(
             new handleresponse( 200, resumes || [], "Resumes fetched successfully")
         );
