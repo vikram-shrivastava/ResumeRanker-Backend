@@ -8,14 +8,17 @@ export const verifyJWT=asynchandler(async(req,_,next)=>{
         console.log(req.cookies?.accesstoken)
         if(!token)
         {
-            throw new handleerror(401,"UnAuthorized Error can not access");
+            return next(new handleerror(401, "Unauthorized"));
         }
         const decodedtoken=jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
+        if(!decodedtoken){
+            return next(new handleerror(401,"Invalid Access Token"));
+        }
         
         const user=await User.findById(decodedtoken?._id).select("-password -RefreshToken")
         if(!user)
         {
-            throw new handleerror(401,"Invalid Access Token")
+            return next(new handleerror(401,"Invalid Access Token"));
         }
         req.user=user;
         next()

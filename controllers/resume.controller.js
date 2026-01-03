@@ -15,12 +15,17 @@ const saveResume = asynchandler(async (req, res) => {
         const { resumelink, originalFilename } = req.body;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(403, "Access blocked");
-        if (!resumelink) throw new handleerror(404, "resumelink is required");
-
-        const parser= new PDFParse({url:resumelink});
-        const response = await parser.getText();
-
+        if (!userId) return next(new handleerror(403, "Access blocked"));
+        if (!resumelink) return next(new handleerror(404, "resumelink is required"));
+        console.log("Resume Link: ",resumelink,"filename: ",originalFilename)
+        const pdfResponse = await axios.get(resumelink, {
+            responseType: "arraybuffer",
+            timeout: 15000,
+        });
+        const parsed = await new PDFParse(pdfResponse.data);
+        if(!parsed.text){
+            return next(new handleerror(404,"parser"))
+        }
         console.log("Parsed text length:", response.text);
         // Save resume to DB
         const resume = new Resume({
@@ -28,7 +33,7 @@ const saveResume = asynchandler(async (req, res) => {
             resumelink,
             fileType: "pdf",
             originalFilename: originalFilename || "Untitled",
-            parsedText: response.text, // only store text
+            parsedText:  parsed.text,
             softDelete: false,
         });
 
@@ -39,7 +44,7 @@ const saveResume = asynchandler(async (req, res) => {
         );
 
     } catch (error) {
-        console.log(error);
+        console.log("Error while saving:",error);
         throw new handleerror(500, "Something went wrong while saving resume");
     }
 });
@@ -50,14 +55,14 @@ const getResume = asynchandler(async (req, res) => {
         const { resumeid } = req.params;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(403, "Access blocked");
-        if (!resumeid) throw new handleerror(400, "Resume ID is required");
+        if (!userId) return next(new handleerror(403, "Access blocked"));
+        if (!resumeid) return next(new handleerror(400, "Resume ID is required"));
 
         const resume = await Resume.findOne({ _id: resumeid, user: userId, softDelete: false });
-        if (!resume) throw new handleerror(404, "Resume not found");
+        if (!resume) return next(new handleerror(404, "Resume not found"));
 
         const resumeLink = resume.resumelink;
-        if (!resumeLink) throw new handleerror(404, "Resume link not found");
+        if (!resumeLink) return next(new handleerror(404, "Resume link not found"));
 
         return res.status(200).json(
             new handleresponse(resumeLink, 200, true, "Resume fetched successfully", resume)
@@ -74,7 +79,7 @@ const getAllUsersResumes = asynchandler(async (req, res) => {
     try {
         const userId = req.user._id;
         if (!userId) {
-            throw new handleerror(403,"Access blocked")
+            return next(new handleerror(403,"Access blocked"))
         }
 
         const resumes = await Resume.find({ user: userId, softDelete: false }).sort({ createdAt: -1 });
@@ -95,8 +100,8 @@ const deleteResume = asynchandler(async (req, res) => {
         const { resumeid } = req.params;
         const userId = req.user._id;
 
-        if (!userId) throw new handleerror(403, "Access Blocked");
-        if (!resumeid) throw new handleerror(404, "Resume ID is required");
+        if (!userId) return next(new handleerror(403, "Access Blocked"));
+        if (!resumeid) return next(new handleerror(404, "Resume ID is required"));
 
         const resume = await Resume.findOneAndUpdate(
             { _id: resumeid, user: userId },
@@ -104,8 +109,7 @@ const deleteResume = asynchandler(async (req, res) => {
             { new: true }
         );
 
-        if (!resume) throw new handleerror(404, "Resume not found");
-
+        if (!resume) return next(new handleerror(404, "Resume not found"));
         return res.status(200).json(
             new handleresponse(resume, 200, true, "Resume deleted successfully", resume)
         );
