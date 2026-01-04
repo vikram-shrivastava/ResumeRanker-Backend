@@ -8,7 +8,7 @@ import generateTailoredResume from "../utils/generateTailoredResume.js";
 import {generatePDFfromLatex} from "../utils/generatePDF.js";
 //ATS Score Controllers:
 //createATSScore: create ATS score for a resume and job description
-const createATSScore=asynchandler(async(req,res)=>{
+const createATSScore=asynchandler(async(req,res,next)=>{
     try {
         const {resumeId,jobDescription,jobRole,atsMode}=req.body;
         const userId=req.user._id;
@@ -60,7 +60,7 @@ const createATSScore=asynchandler(async(req,res)=>{
     }
 })
 
-const getATSScoreById=asynchandler(async(req,res)=>{
+const getATSScoreById=asynchandler(async(req,res,next)=>{
     try {
         const {resumeid}=req.params;
         const userId=req.user._id;
@@ -84,7 +84,7 @@ const getATSScoreById=asynchandler(async(req,res)=>{
     }
 });
 
-const tailorResumeForJob = asynchandler(async (req, res) => {
+const tailorResumeForJob = asynchandler(async (req, res, next) => {
   try {
     const { resumeId, jobDescription, dataforresume={} } = req.body;
     const userId = req.user._id;
@@ -128,7 +128,7 @@ const tailorResumeForJob = asynchandler(async (req, res) => {
 });
 
 
-const getAllUserATSScore=asynchandler(async(req,res)=>{
+const getAllUserATSScore=asynchandler(async(req,res,next)=>{
     try {
         const userId=req.user._id;
         if(!userId){

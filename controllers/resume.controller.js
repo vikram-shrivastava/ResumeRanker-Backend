@@ -10,7 +10,7 @@ import {PDFParse}  from "pdf-parse";
 // ========================
 
 // saveResume(url) : save in DB with parsedText and url and return the resumeId
-const saveResume = asynchandler(async (req, res) => {
+const saveResume = asynchandler(async (req, res, next) => {
     try {
         const { resumelink, originalFilename } = req.body;
         const userId = req.user._id;
@@ -21,12 +21,15 @@ const saveResume = asynchandler(async (req, res) => {
         const pdfResponse = await axios.get(resumelink, {
             responseType: "arraybuffer",
             timeout: 15000,
-        });
-        const parsed = await new PDFParse(pdfResponse.data);
-        if(!parsed.text){
-            return next(new handleerror(404,"parser"))
+        });      
+        const pdfData = new Uint8Array(pdfResponse.data);
+        const pdfInstance = new PDFParse(pdfData); // create instance
+        const parsed = await pdfInstance.getText();
+        console.log("Parsed PDF successfully",parsed);
+        if (!parsed.text || parsed.text.trim().length === 0) {
+            return next(new handleerror(400, "PDF parsing failed or empty text"));
         }
-        console.log("Parsed text length:", response.text);
+        console.log("Parsed text length:", parsed.text.length);
         // Save resume to DB
         const resume = new Resume({
             user: userId,
@@ -50,7 +53,7 @@ const saveResume = asynchandler(async (req, res) => {
 });
 
 // getResume(resumeid): get resume by id
-const getResume = asynchandler(async (req, res) => {
+const getResume = asynchandler(async (req, res, next) => {
     try {
         const { resumeid } = req.params;
         const userId = req.user._id;
@@ -75,7 +78,7 @@ const getResume = asynchandler(async (req, res) => {
 });
 
 // getAllUsersResumes: get all resumes of a user
-const getAllUsersResumes = asynchandler(async (req, res) => {
+const getAllUsersResumes = asynchandler(async (req, res, next) => {
     try {
         const userId = req.user._id;
         if (!userId) {
@@ -95,7 +98,7 @@ const getAllUsersResumes = asynchandler(async (req, res) => {
 });
 
 // deleteResume: soft delete a resume
-const deleteResume = asynchandler(async (req, res) => {
+const deleteResume = asynchandler(async (req, res, next) => {
     try {
         const { resumeid } = req.params;
         const userId = req.user._id;

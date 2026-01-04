@@ -1,33 +1,11 @@
-version: '3.9'
+version: "3.9"
 
 services:
   backend:
     build: .
     container_name: resumeranker-backend
+    restart: always
     ports:
-      - 8000:8000
+      - "8000:8000"
     env_file:
       - .env
-    environment:
-      MONGODB_URI: mongodb://admin:admin@mongodb:27017
-      NODE_ENV: development
-    depends_on:
-      - mongodb
-    volumes:
-      - ./:/app
-      - /app/node_modules
-    command: npm run dev
-    restart: always
-  mongodb:
-    image: mongo
-    container_name: mongodb-dev
-    ports:
-      - 27017:27017
-    volumes:
-      - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-    restart: always
-volumes:
-  mongo_data:

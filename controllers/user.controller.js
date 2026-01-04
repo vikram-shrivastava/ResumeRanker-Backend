@@ -29,7 +29,7 @@ const generateAccessandRefreshtoken=async(userid)=>{
     }
 } 
 
-const registerUser=asynchandler(async(req,res)=>{
+const registerUser=asynchandler(async(req,res,next)=>{
     console.log("Register User called");
     const {username,email,password}=req.body;
 
@@ -71,7 +71,7 @@ const registerUser=asynchandler(async(req,res)=>{
         .json(new handleresponse(200,{createdUser,accesstoken},"User Registered Successfully"));
 });
 
-const verifytoken=asynchandler(async(req,res)=>{
+const verifytoken=asynchandler(async(req,res,next)=>{
 try {
         const {verificationToken,username } = req.body;
         if (!verificationToken) {
@@ -112,7 +112,7 @@ try {
 }
 })
 
-const loginUser=asynchandler(async(req,res)=>{
+const loginUser=asynchandler(async(req,res,next)=>{
    try {
      const {email,username,password}=req.body;
       if( !(email || username))
@@ -151,7 +151,7 @@ const loginUser=asynchandler(async(req,res)=>{
    }
 })
 
-const logoutuser=asynchandler(async(req,res)=>{
+const logoutuser=asynchandler(async(req,res,next)=>{
     //find user
     //remove cookies of the user
     //remove refresh token in usermodel
@@ -171,7 +171,7 @@ const logoutuser=asynchandler(async(req,res)=>{
     .json(new handleresponse(200, {}, "User logged Out"))
 })
 
-const changepassword=asynchandler(async(req,res)=>{
+const changepassword=asynchandler(async(req,res,next)=>{
     const {oldpassword,newpassword}=req.body
     const user=await User.findById(req.user?._id)
     const ispasswordcorrect=await user.ispasswordcorrect(oldpassword)
@@ -189,7 +189,7 @@ const changepassword=asynchandler(async(req,res)=>{
     )
 })
 
-const getcurrentuser=asynchandler(async(req,res)=>{
+const getcurrentuser=asynchandler(async(req,res,next)=>{
     return res
     .status(200)
     .json(
@@ -199,7 +199,7 @@ const getcurrentuser=asynchandler(async(req,res)=>{
 
     
 //refresh token controller
-const refreshAccessToken = async (req, res) => {
+const refreshAccessToken = async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
