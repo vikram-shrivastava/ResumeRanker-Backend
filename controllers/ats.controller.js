@@ -112,7 +112,7 @@ const tailorResumeForJob = asynchandler(async (req, res, next) => {
         return next(new handleerror(503, "Failed to generate PDF from LaTeX"));
     }
 
-    resume.tailored=resume.tailored+1;
+    resume.tailored=true;
     await resume.save();
     // 3️⃣ Send PDF to frontend
     res.setHeader("Content-Type", "application/pdf");
