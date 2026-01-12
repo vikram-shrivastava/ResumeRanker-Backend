@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set("trust proxy", true);
 app.use(cors({
     origin:"https://resumeranker.vikramshrivastav.app",
     credentials:true
