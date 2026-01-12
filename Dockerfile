@@ -1,26 +1,40 @@
-# Use lightweight Node 20 image
-FROM node:20-slim
-
-# Optional: Install LaTeX if your app needs it
-RUN apt-get update && \
-    apt-get install -y \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-fonts-recommended \
-    texlive-latex-extra \
-    && rm -rf /var/lib/apt/lists/*
+# =========================
+# Stage 1: Build stage
+# =========================
+FROM node:20-slim AS build
 
 # Set working directory
 WORKDIR /app
 
+# Install LaTeX and clean caches in one layer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        texlive-latex-base \
+        texlive-latex-recommended \
+        texlive-fonts-recommended \
+        texlive-latex-extra && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
+
 # Copy package files first for caching
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm install
+# Install dependencies
+RUN npm install --production
 
-# Copy source code
+# Copy app source code
 COPY . .
+
+# =========================
+# Stage 2: Runtime stage
+# =========================
+FROM node:20-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy only what is needed from build stage
+COPY --from=build /app /app
 
 # Expose backend port
 EXPOSE 8000
