@@ -1,0 +1,10 @@
+typing_extensions
+typing
+langchain_openai
+langchain_core
+langchain
+langgraph
+python-dotenv
+fastapi
+pydantic
+uvicorn

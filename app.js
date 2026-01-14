@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 app.set("trust proxy", true);
 app.use(cors({
-    origin:"https://resumeranker.vikramshrivastav.app",
+    origin:["http://localhost:3000", "https://resumeranker.vikramshrivastav.app"],
     credentials:true
 }));
 

@@ -34,7 +34,10 @@ const createATSScore=asynchandler(async(req,res,next)=>{
             return next(new handleerror(404,"Resume not found"));
         }
         //ATS score calculation logic
-        const { totalATSScore,roleDetected,summary,keywordsFound,keywordsMissing, improvements}=getATSScore(resume.parsedText,jobDescription || jobRole);
+        const { totalATSScore,roleDetected,summary,keywordsFound,keywordsMissing, improvements}=await getATSScore(resume.parsedText,jobDescription || jobRole);
+        console.log("ATS Score calculated:", totalATSScore);
+
+        
         const atsScore=new ATSScore({
             user:userId,
             resume:resumeId,

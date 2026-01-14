@@ -5,9 +5,16 @@ services:
     build: .
     container_name: resumeranker-backend
     restart: always
-
     env_file:
       - .env
+  ai_service:
+    build: ./ai_service # Builds from the NEW Dockerfile inside ai-service folder
+    container_name: resumeranker-ai
+    restart: always
+    env_file:
+      - .env # Shares the same env file (contains OpenAI API Key)
+    ports:
+      - "5000:5000" # Exposes port 5000 for AI service
   nginx:
     image: nginx:latest
     volumes:
