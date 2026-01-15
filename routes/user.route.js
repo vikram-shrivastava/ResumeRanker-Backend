@@ -5,7 +5,10 @@ import {registerUser,
     changepassword,
     getcurrentuser,
     refreshAccessToken,
-    verifytoken} from "../controllers/user.controller.js"
+    verifytoken,
+    forgotPassword,
+    resetPassword
+} from "../controllers/user.controller.js"
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -17,4 +20,6 @@ router.route("/changepassword").post(verifyJWT,changepassword)
 router.route("/logout").post(verifyJWT,logoutuser)
 router.route("/user").get(verifyJWT,getcurrentuser)
 router.route("/verifytoken").post(verifytoken)
+router.route("/forgotpassword").post(forgotPassword)
+router.route("/resetpassword/:token").post(resetPassword)
 export default router;

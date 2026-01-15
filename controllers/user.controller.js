@@ -5,7 +5,10 @@ import { handleresponse } from "../utils/apiresponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { sendVerificationEmail } from "../utils/sendVerificationemail.js";
+import { sendForgotPasswordEmail } from "../utils/sendForgotPasswordemail.js";
 import bcrypt from "bcrypt"
+import crypto from "crypto";
+
 
 
 const options={
@@ -171,6 +174,108 @@ const logoutuser=asynchandler(async(req,res,next)=>{
     .json(new handleresponse(200, {}, "User logged Out"))
 })
 
+ const forgotPassword = asynchandler(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new handleerror(400, "Email is required"));
+  }
+
+  const user = await User.findOne({ email });
+
+  // IMPORTANT: Do NOT reveal whether user exists
+  if (!user) {
+    return res.status(200).json(
+      new handleresponse(
+        200,
+        {},
+        "If an account exists, a password reset link has been sent"
+      )
+    );
+  }
+
+  // Generate token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash token before saving
+  user.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${process.env.CORS_ORIGIN}/reset-password/${resetToken}`;
+
+  try {
+    await sendForgotPasswordEmail(
+      user.email,
+      user.username,
+      resetUrl,
+    );
+
+    return res.status(200).json(
+      new handleresponse(
+        200,
+        {},
+        "If an account exists, a password reset link has been sent"
+      )
+    );
+  } catch (error) {
+    // Rollback token if email fails
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(new handleerror(500, "Email could not be sent"));
+  }
+});
+
+const resetPassword = asynchandler(async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+    console.log("Reset Password called with token:", token," password:", password, "confirmPassword:", confirmPassword);
+    if (!password || !confirmPassword) {
+      return next(new handleerror(400, "Password and confirm password required"));
+    }
+  
+    if (password !== confirmPassword) {
+      return next(new handleerror(400, "Passwords do not match"));
+    }
+  
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+  
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+    
+    if (!user) {
+      return next(new handleerror(400, "Invalid or expired reset token"));
+    }
+  
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = null;
+  
+    await user.save();
+  
+    return res.status(200).json(
+      new handleresponse(200, {}, "Password reset successful")
+    );
+  } catch (error) {
+    console.log(error);
+    return next(new handleerror(500, "Password reset failed"));
+  }
+});
+
+
 const changepassword=asynchandler(async(req,res,next)=>{
     const {oldpassword,newpassword}=req.body
     const user=await User.findById(req.user?._id)
@@ -241,5 +346,7 @@ export {
     changepassword,
     getcurrentuser,
     refreshAccessToken,
-    verifytoken
+    verifytoken,
+    forgotPassword,
+    resetPassword
 }
