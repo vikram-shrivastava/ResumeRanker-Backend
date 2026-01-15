@@ -78,24 +78,58 @@ const getResume = asynchandler(async (req, res, next) => {
 });
 
 // getAllUsersResumes: get all resumes of a user
+const getAllUsersResumespagination = asynchandler(async (req, res, next) => {
+  try {
+    const userId = req.user._id
+    if (!userId) {
+      return next(new handleerror(403, "Access blocked"))
+    }
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(parseInt(req.query.limit) || 5, 50)
+    const skip = (page - 1) * limit
+
+    const [resumes, total] = await Promise.all([
+      Resume.find({ user: userId, softDelete: false })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Resume.countDocuments({ user: userId, softDelete: false }),
+    ])
+
+    return res.status(200).json(
+      new handleresponse(200, {
+        resumes,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      }, "Resumes fetched successfully")
+    )
+  } catch (error) {
+    console.log(error)
+    throw new handleerror(500, "Something went wrong while fetching resumes")
+  }
+})
+
 const getAllUsersResumes = asynchandler(async (req, res, next) => {
     try {
         const userId = req.user._id;
         if (!userId) {
-            return next(new handleerror(403,"Access blocked"))
+            return next(new handleerror(403, "Access blocked"));
         }
-
         const resumes = await Resume.find({ user: userId, softDelete: false }).sort({ createdAt: -1 });
-        console.log("Resume",resumes)
-        return res.status(200).json(
-            new handleresponse( 200, resumes || [], "Resumes fetched successfully")
-        );
 
+        return res.status(200).json(
+            new handleresponse(200, resumes, "Resumes fetched successfully")
+        );
     } catch (error) {
-        console.log(error);
         throw new handleerror(500, "Something went wrong while fetching resumes");
     }
 });
+
 
 // deleteResume: soft delete a resume
 const deleteResume = asynchandler(async (req, res, next) => {
@@ -123,4 +157,4 @@ const deleteResume = asynchandler(async (req, res, next) => {
     }
 });
 
-export { saveResume, getResume, getAllUsersResumes, deleteResume };
+export { saveResume, getResume, getAllUsersResumes, getAllUsersResumespagination, deleteResume };

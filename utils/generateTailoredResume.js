@@ -26,12 +26,21 @@ Tailor the resume based on:
 - Additional user-provided data: ${JSON.stringify(dataForResume, null, 2)}
 
 Rules:
+- The Resume should follow Header, Profile Summary,Education, Experience (if any else skip), Projects, Achievements.
+- Remember to format the resume strictly in LaTeX using the provided template.
+- Focus on tailoring the content to match the job description.
+- Don't include any explanations or notes, only provide the LaTeX code.
+- Keep the length to 1 page maximum that is less than 500 words.
+
+Guidelines:
 - Use only factual content from the inputs.
+- Don't add too much text in the profile summary; keep it concise and relevant to jd.
 - Rewrite summary, experience bullets, projects, and skills to match the job description.
+- Don't add irrelevant experience or skills.
 - Include additional projects, skills, or achievements from dataForResume.
 - Include only sections with content. Do NOT include empty sections.
 - Keep formatting consistent with the provided LaTeX template.
-- Keep the resume 1 page maximum.
+- Keep the resume 1 page maximum that is less than 500 words.
 - ATS-friendly and readable.
 - **Do NOT add backticks, Markdown, JSON, or any extra text.**
 - Start exactly with:

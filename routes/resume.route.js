@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {saveResume,getResume,getAllUsersResumes,deleteResume} from "../controllers/resume.controller.js"
+import {saveResume,getResume,getAllUsersResumes,deleteResume,getAllUsersResumespagination} from "../controllers/resume.controller.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import rateLimit from "express-rate-limit";
 
@@ -22,5 +22,6 @@ router.route("/save-resume").post(verifyJWT,resumeLimiter,saveResume)
 router.route("/get-resume/:resumeid").get(verifyJWT,getResume)
 router.route("/get-all-resume").get(verifyJWT,getAllUsersResumes)
 router.route("/delete-resume/:resumeid").patch(verifyJWT,deleteResume)
+router.route("/get-all-resume-pagination").get(verifyJWT,getAllUsersResumespagination)
 
 export default router
