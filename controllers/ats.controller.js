@@ -144,4 +144,28 @@ const getAllUserATSScore=asynchandler(async(req,res,next)=>{
         throw new handleerror(500,"Internal Server Error")
     }
 })
-export { createATSScore, getATSScoreById, tailorResumeForJob,getAllUserATSScore };
+
+const getATSScoreByResumeId=asynchandler(async(req,res,next)=>{
+    try {
+        const {resumeId}=req.params;
+        const userId=req.user._id;
+        if(!userId){
+            return next(new handleerror(403,"Access blocked"));
+        }
+        if(!resumeId){
+            return next(new handleerror(404,"Resume ID is required"));
+        }
+        const atsScore=await ATSScore.findOne({resume:resumeId,user:userId});
+        if(!atsScore){
+            return next(new handleerror(404,"ATS Score not found for this resume"));
+        }
+        return res.status(200).json(
+            new handleresponse(200,atsScore,"ATS Score fetched successfully")
+        );
+    } catch (error) {
+        console.log(error);
+        throw new handleerror(500,"Something went wrong while fetching ATS Score");
+    }
+});
+
+export { createATSScore, getATSScoreById, tailorResumeForJob,getAllUserATSScore, getATSScoreByResumeId };

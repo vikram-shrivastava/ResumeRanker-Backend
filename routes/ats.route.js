@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {createATSScore, getATSScoreById, tailorResumeForJob,getAllUserATSScore} from "../controllers/ats.controller.js"
+import {createATSScore, getATSScoreById, tailorResumeForJob,getAllUserATSScore,getATSScoreByResumeId} from "../controllers/ats.controller.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import rateLimit from 'express-rate-limit'
 
@@ -19,8 +19,9 @@ const atsLimiter = rateLimit({
 
 const router=Router()
 router.route("/create-ats-score").post(verifyJWT,atsLimiter,createATSScore)
-router.route("/get-ats-score/:atsid").get(verifyJWT,getATSScoreById)
+router.route("/get-ats-score/:atsid").get(verifyJWT,atsLimiter,getATSScoreById)
 router.route("/tailor-resume-for-job").post(verifyJWT,atsLimiter,tailorResumeForJob)
 router.route("/get-all-atsscore").get(verifyJWT,getAllUserATSScore)
+router.route("/get-atsscore-resume/:resumeId").get(verifyJWT,atsLimiter,getATSScoreByResumeId)
 
 export default router;
