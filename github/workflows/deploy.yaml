@@ -17,6 +17,6 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
-            cd /home/ubuntu
+            cd /home/ubuntu/ResumeRanker-Backend
             git pull origin main
             docker-compose up -d --build
